@@ -134,7 +134,21 @@ type TranslationKey =
   | 'dailyChallenge'
   | 'completeDailyChallenge'
   | 'challengeCompleted'
-  | 'dailyChallenges';
+  | 'dailyChallenges'
+  | 'completedChallenges'
+  | 'weightStatus'
+  | 'healthyWeight'
+  | 'overweight'
+  | 'underweight'
+  | 'healthyRange'
+  | 'bmiCategory'
+  | 'weightToLose'
+  | 'weightToGain'
+  | 'aboveRange'
+  | 'belowRange'
+  | 'healthyWeightMessage'
+  | 'weightLossMessage'
+  | 'weightGainMessage';
 
 type Translations = {
   [key in TranslationKey]: string;
@@ -275,7 +289,21 @@ const translations: Record<Language, Translations> = {
     dailyChallenge: 'Daily Challenge',
     completeDailyChallenge: 'Complete Daily Challenge',
     challengeCompleted: 'Challenge Completed!',
-    dailyChallenges: 'Daily Challenges'
+    dailyChallenges: 'Daily Challenges',
+    completedChallenges: 'Completed Challenges',
+    weightStatus: 'Weight Status',
+    healthyWeight: 'Healthy Weight',
+    overweight: 'Overweight',
+    underweight: 'Underweight',
+    healthyRange: 'Healthy Range',
+    bmiCategory: 'BMI Category',
+    weightToLose: 'Weight to Lose',
+    weightToGain: 'Weight to Gain',
+    aboveRange: 'above range',
+    belowRange: 'below range',
+    healthyWeightMessage: 'Your weight is in the healthy range for your height',
+    weightLossMessage: 'Based on your metrics, it would be healthy to lose',
+    weightGainMessage: 'Based on your metrics, it would be healthy to gain'
   },
   he: {
     dashboard: 'לוח בקרה',
@@ -411,7 +439,21 @@ const translations: Record<Language, Translations> = {
     dailyChallenge: 'אתגר יומי',
     completeDailyChallenge: 'השלם אתגר יומי',
     challengeCompleted: 'אתגר הושלם!',
-    dailyChallenges: 'אתגרים יומיים'
+    dailyChallenges: 'אתגרים יומיים',
+    completedChallenges: 'אתגרים שהושלמו',
+    weightStatus: 'סטטוס משקל',
+    healthyWeight: 'משקל תקין',
+    overweight: 'עודף משקל',
+    underweight: 'תת משקל',
+    healthyRange: 'טווח בריא',
+    bmiCategory: 'קטגוריית BMI',
+    weightToLose: 'משקל להפחתה',
+    weightToGain: 'משקל לעלייה',
+    aboveRange: 'מעל הטווח',
+    belowRange: 'מתחת לטווח',
+    healthyWeightMessage: 'המשקל שלך בטווח הבריא לגובה שלך',
+    weightLossMessage: 'לפי הנתונים שלך, כדאי להפחית',
+    weightGainMessage: 'לפי הנתונים שלך, כדאי להעלות'
   }
 };
 

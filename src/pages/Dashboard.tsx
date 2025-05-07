@@ -4,7 +4,6 @@ import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useAppContext } from '../context/AppContext';
 import {
-  BarChart3,
   Utensils,
   Activity,
   ArrowRight,
@@ -32,6 +31,7 @@ import LevelProgressCard from '../components/dashboard/LevelProgressCard';
 import DailyChallenge, { Challenge } from '../components/DailyChallenge';
 import CompletionConfetti from '../components/CompletionConfetti';
 import ActiveGoalCard from '../components/dashboard/ActiveGoalCard';
+import WeightStatusCard from '../components/dashboard/WeightStatusCard';
 
 // Register Chart.js components
 ChartJS.register(
@@ -78,23 +78,6 @@ const Dashboard: React.FC = () => {
     }
     
     return greeting;
-  };
-
-  // Calculate BMI if height and weight are available
-  const bmi = useMemo(() => {
-    if (userProfile?.height && userProfile?.weight) {
-      const heightInMeters = userProfile.height / 100;
-      return (userProfile.weight / (heightInMeters * heightInMeters)).toFixed(1);
-    }
-    return null;
-  }, [userProfile?.height, userProfile?.weight]);
-
-  // Get BMI category
-  const getBmiCategory = (bmiValue: number): string => {
-    if (bmiValue < 18.5) return language === 'he' ? 'תת משקל' : 'Underweight';
-    if (bmiValue < 25) return language === 'he' ? 'משקל תקין' : 'Normal';
-    if (bmiValue < 30) return language === 'he' ? 'עודף משקל' : 'Overweight';
-    return language === 'he' ? 'השמנה' : 'Obese';
   };
 
   // Get latest weight entry
@@ -165,12 +148,26 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!userProfile) return;
 
+    // Get today's date for challenge generation and tracking
+    const today = new Date();
+    const todayDateString = today.toISOString().split('T')[0];
+    
+    // Check if we've already generated challenges for today
+    const lastGeneratedDate = localStorage.getItem('lastDailyChallengeDate');
+    
+    // If challenges were generated today and we have non-empty challenges, don't regenerate
+    if (lastGeneratedDate === todayDateString && dailyChallenges.length > 0) {
+      return;
+    }
+    
+    // Store today's date as the last generation date
+    localStorage.setItem('lastDailyChallengeDate', todayDateString);
+    
     // Check if user has completed training schedule setup
     const hasSetupSchedule = userProfile.trainingSchedule?.hasCompletedSetup;
 
     if (hasSetupSchedule) {
       // Get today's day name (e.g., 'monday', 'tuesday', etc.)
-      const today = new Date();
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const todayName = dayNames[today.getDay()];
       
@@ -252,44 +249,20 @@ const Dashboard: React.FC = () => {
       setDailyChallenges(newChallenges);
     } else {
       // Default challenges for users who haven't set up their schedule
-      setDailyChallenges([
-        {
-          id: 'setup-schedule',
-          title: language === 'he' 
-            ? 'הגדר את לוח הזמנים שלך' 
-            : 'Set up your training schedule',
-          description: language === 'he'
-            ? 'התאם אישית את האתגרים היומיים שלך על ידי הגדרת לוח זמנים'
-            : 'Customize your daily challenges by setting up a schedule',
-          xpReward: 25,
-          isCompleted: false,
-          category: 'tracking'
-        },
-        {
-          id: 'log-activity',
-          title: language === 'he' 
-            ? 'תעד פעילות גופנית כלשהי' 
-            : 'Log any physical activity',
-          description: language === 'he'
-            ? 'התחל לעקוב אחר הפעילות הגופנית שלך'
-            : 'Start tracking your physical activity',
-          xpReward: 10,
-          isCompleted: false,
-          category: 'exercise'
-        },
-        {
-          id: 'log-meal',
-          title: language === 'he' 
-            ? 'תעד ארוחה אחת' 
-            : 'Log one meal',
-          description: language === 'he'
-            ? 'התחל לעקוב אחר התזונה שלך'
-            : 'Start tracking your nutrition',
-          xpReward: 5,
-          isCompleted: false,
-          category: 'nutrition'
-        }
-      ]);
+      // For new users, only show the training schedule setup task
+      // This is required before other daily challenges can be generated
+      setDailyChallenges([{
+        id: 'setup-schedule',
+        title: language === 'he' 
+          ? 'הגדר את לוח הזמנים שלך' 
+          : 'Set up your training schedule',
+        description: language === 'he'
+          ? 'התאם אישית את האתגרים היומיים שלך על ידי הגדרת לוח זמנים'
+          : 'Customize your daily challenges by setting up a schedule',
+        xpReward: 25,
+        isCompleted: false,
+        category: 'tracking'
+      }]);
     }
   }, [userProfile, language]);
 
@@ -297,24 +270,35 @@ const Dashboard: React.FC = () => {
   const handleCompleteChallenge = (challengeId: string) => {
     // Find the challenge that was completed
     const challenge = dailyChallenges.find(c => c.id === challengeId);
-    if (!challenge) return;
+    if (!challenge || challenge.isCompleted) return;
     
-    // Check if it's the schedule setup challenge
+    // Get today's date for recording challenge completion
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    // Handle schedule setup challenge separately
     if (challengeId === 'setup-schedule') {
-      navigate('/training-setup');
+      // Mark challenge as completed
+      setDailyChallenges(prev => 
+        prev.map(c => c.id === challengeId ? { ...c, isCompleted: true } : c)
+      );
+      
+      // Record completion in localStorage
+      recordChallengeCompletion(challengeId, today);
+      
+      // Show message briefly before navigating
+      setTimeout(() => navigate('/training-setup'), 1000);
       return;
     }
     
-    // Update challenges state
+    // For other challenges, update state
     setDailyChallenges(prev => 
-      prev.map(c => 
-        c.id === challengeId 
-          ? { ...c, isCompleted: true } 
-          : c
-      )
+      prev.map(c => c.id === challengeId ? { ...c, isCompleted: true } : c)
     );
     
-    // Set confetti message and XP
+    // Record completion in localStorage
+    recordChallengeCompletion(challengeId, today);
+    
+    // Show completion message and award XP
     setConfettiMessage(
       language === 'he'
         ? `השלמת את האתגר: ${challenge.title}`
@@ -323,17 +307,45 @@ const Dashboard: React.FC = () => {
     setConfettiXp(challenge.xpReward);
     setShowConfetti(true);
     
-    // Update user XP when completing a challenge
+    // Update user XP
     updateUserXp(challenge.xpReward);
     
-    // Store completed challenge to localStorage for achievements page
+    // Record for achievements page
     const completedChallenge = {
       ...challenge,
+      // Store challenge data in the user's current language
+      title: challenge.title,
+      description: challenge.description,
       completedDate: new Date().toISOString()
     };
     
     const savedChallenges = JSON.parse(localStorage.getItem('completedChallenges') || '[]');
-    savedChallenges.unshift(completedChallenge); // Add to beginning of array
+    
+    // Define an interface for the challenge structure in localStorage
+    interface StoredChallenge {
+      id: string;
+      title: string;
+      description: string;
+      xpReward: number;
+      isCompleted: boolean;
+      category: string;
+      completedDate: string;
+    }
+    
+    // Check if this challenge already exists in savedChallenges
+    const existingChallengeIndex = savedChallenges.findIndex((c: StoredChallenge) => c.id === challenge.id);
+    
+    if (existingChallengeIndex !== -1) {
+      // Update the challenge with the current language but keep the completion date
+      savedChallenges[existingChallengeIndex] = {
+        ...savedChallenges[existingChallengeIndex],
+        title: challenge.title,
+        description: challenge.description
+      };
+    } else {
+      // Add new challenge to beginning of array
+      savedChallenges.unshift(completedChallenge);
+    }
     
     // Keep only last 20 completed challenges
     if (savedChallenges.length > 20) {
@@ -342,7 +354,7 @@ const Dashboard: React.FC = () => {
     
     localStorage.setItem('completedChallenges', JSON.stringify(savedChallenges));
     
-    // Add achievement for completing first daily challenge if this is their first completion
+    // First challenge achievement
     if (!dailyChallenges.some(c => c.isCompleted && c.id !== challengeId)) {
       const firstChallengeAchievement = {
         title: language === 'he' ? 'מסע מתחיל בצעד הראשון' : 'A Journey Begins',
@@ -358,6 +370,63 @@ const Dashboard: React.FC = () => {
       addAchievement(firstChallengeAchievement);
     }
   };
+  
+  // Helper function to record challenge completion in localStorage
+  const recordChallengeCompletion = (challengeId: string, date: string) => {
+    const completedChallenges = JSON.parse(localStorage.getItem('dailyChallengesCompleted') || '{}');
+    
+    // Store completion by date and challenge ID
+    completedChallenges[date] = completedChallenges[date] || [];
+    if (!completedChallenges[date].includes(challengeId)) {
+      completedChallenges[date].push(challengeId);
+    }
+    
+    localStorage.setItem('dailyChallengesCompleted', JSON.stringify(completedChallenges));
+  };
+
+  // Add useEffect to check for completed challenges on mount
+  // This useEffect runs AFTER challenges are generated
+  useEffect(() => {
+    if (dailyChallenges.length === 0) return;
+    
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get completed challenges from localStorage
+    const completedChallengesForToday = JSON.parse(localStorage.getItem('dailyChallengesCompleted') || '{}');
+    const todaysCompletedChallenges = completedChallengesForToday[today] || [];
+    
+    // Mark challenges as completed if they're in the completed list for today
+    if (todaysCompletedChallenges.length > 0) {
+      setDailyChallenges(prev => 
+        prev.map(challenge => 
+          todaysCompletedChallenges.includes(challenge.id)
+            ? { ...challenge, isCompleted: true }
+            : challenge
+        )
+      );
+    }
+    
+  }, [dailyChallenges.length]);
+  
+  // Clean up old completed challenges (keep only last 7 days)
+  useEffect(() => {
+    const completedChallenges = JSON.parse(localStorage.getItem('dailyChallengesCompleted') || '{}');
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    
+    // Filter out entries older than 7 days
+    const filteredChallenges: Record<string, string[]> = {};
+    Object.keys(completedChallenges).forEach(dateStr => {
+      const entryDate = new Date(dateStr);
+      if (entryDate >= sevenDaysAgo) {
+        filteredChallenges[dateStr] = completedChallenges[dateStr];
+      }
+    });
+    
+    localStorage.setItem('dailyChallengesCompleted', JSON.stringify(filteredChallenges));
+  }, []);
 
   return (
     <div className="space-y-6" dir={language === 'he' ? 'rtl' : 'ltr'}>
@@ -418,6 +487,11 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Weight Status Card - New component showing detailed weight metrics */}
+      {userProfile && (
+        <WeightStatusCard className="bg-gradient-to-br from-indigo-50 to-purple-50 shadow-md" />
+      )}
+      
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Weight Card */}
@@ -429,26 +503,14 @@ const Dashboard: React.FC = () => {
           className="bg-gradient-to-br from-blue-50 to-cyan-50 hover:shadow-md transition-shadow"
         />
         
-        {/* BMI Card - Only shown if profile has height and weight */}
-        {bmi ? (
-          <DashboardCard 
-            title={t('bmi')}
-            value={bmi}
-            subtitle={getBmiCategory(parseFloat(bmi))}
-            icon={<BarChart3 className="h-5 w-5 text-green-600" />}
-            linkTo="/settings"
-            className="bg-gradient-to-br from-green-50 to-emerald-50 hover:shadow-md transition-shadow"
-          />
-        ) : (
-          /* Emotional State Card */
-          <DashboardCard 
-            title={t('emotionalState')}
-            value={t(latestMood)}
-            icon={<Heart className="h-5 w-5 text-pink-600" />}
-            linkTo="/emotional"
-            className="bg-gradient-to-br from-pink-50 to-rose-50 hover:shadow-md transition-shadow"
-          />
-        )}
+        {/* Emotional State Card */}
+        <DashboardCard 
+          title={t('emotionalState')}
+          value={t(latestMood)}
+          icon={<Heart className="h-5 w-5 text-pink-600" />}
+          linkTo="/emotional"
+          className="bg-gradient-to-br from-pink-50 to-rose-50 hover:shadow-md transition-shadow"
+        />
         
         {/* Active Goals Card - Replaced with ActiveGoalCard */}
         <ActiveGoalCard 

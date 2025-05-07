@@ -360,6 +360,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const updateTrainingSchedule = (schedule: UserSchedule) => {
     if (!data.userProfile) return;
     
+    // Mark first-time setup completion
+    const isFirstSetup = !data.userProfile.trainingSchedule?.hasCompletedSetup;
+    
     setData((prev: AppContextType) => ({
       ...prev,
       userProfile: {
@@ -367,6 +370,73 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         trainingSchedule: schedule
       }
     }));
+    
+    // If this is the first time completing the setup, give XP reward and clear schedule setup task
+    if (isFirstSetup) {
+      // Reward XP for completing the schedule setup
+      updateUserXp(25);
+      
+      // Save completed challenge to localStorage with today's date
+      const today = new Date().toISOString().split('T')[0];
+      const completedChallengesForToday = JSON.parse(localStorage.getItem('dailyChallengesCompleted') || '{}');
+      
+      // Add setup-schedule to completed challenges
+      completedChallengesForToday[today] = completedChallengesForToday[today] || [];
+      if (!completedChallengesForToday[today].includes('setup-schedule')) {
+        completedChallengesForToday[today].push('setup-schedule');
+      }
+      
+      localStorage.setItem('dailyChallengesCompleted', JSON.stringify(completedChallengesForToday));
+      
+      // Reset daily challenge date to generate new challenges based on schedule
+      localStorage.removeItem('lastDailyChallengeDate');
+      
+      // Add completed challenge to achievements page
+      const setupChallenge = {
+        id: 'setup-schedule',
+        title: language === 'he' ? 'הגדר את לוח הזמנים שלך' : 'Set up your training schedule',
+        description: language === 'he' 
+          ? 'התאם אישית את האתגרים היומיים שלך על ידי הגדרת לוח זמנים'
+          : 'Customize your daily challenges by setting up a schedule',
+        xpReward: 25,
+        isCompleted: true,
+        category: 'tracking',
+        completedDate: new Date().toISOString()
+      };
+      
+      const savedChallenges = JSON.parse(localStorage.getItem('completedChallenges') || '[]');
+      
+      // Define an interface for the challenge structure in localStorage
+      interface StoredChallenge {
+        id: string;
+        title: string;
+        description: string;
+        xpReward: number;
+        isCompleted: boolean;
+        category: string;
+        completedDate: string;
+      }
+      
+      const existingChallengeIndex = savedChallenges.findIndex((c: StoredChallenge) => c.id === 'setup-schedule');
+      if (existingChallengeIndex !== -1) {
+        // Update existing challenge with current language
+        savedChallenges[existingChallengeIndex] = {
+          ...savedChallenges[existingChallengeIndex],
+          title: setupChallenge.title,
+          description: setupChallenge.description
+        };
+      } else {
+        // Add new challenge
+        savedChallenges.unshift(setupChallenge);
+      }
+      
+      // Keep only last 20 completed challenges
+      if (savedChallenges.length > 20) {
+        savedChallenges.pop();
+      }
+      
+      localStorage.setItem('completedChallenges', JSON.stringify(savedChallenges));
+    }
   };
 
   const addWeightEntry = (entry: Omit<WeightEntry, 'id'>) => {

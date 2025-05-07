@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { CheckCircle, Clock, Zap, Target, Star, TrendingUp } from 'lucide-react';
 
@@ -66,7 +66,9 @@ const DailyChallenge: React.FC<DailyChallengeProps> = ({
   
   // Handle challenge completion
   const handleCompleteChallenge = (challenge: Challenge) => {
+    // If the challenge is already completed or no completion handler is provided, do nothing
     if (challenge.isCompleted || !onComplete) return;
+    
     onComplete(challenge.id);
   };
   
@@ -100,11 +102,49 @@ const DailyChallenge: React.FC<DailyChallengeProps> = ({
       </div>
       
       <div className="space-y-3">
+        {/* Special emphasis if the only challenge is to set up the schedule */}
+        {challenges.length === 1 && challenges[0].id === 'setup-schedule' && !challenges[0].isCompleted && (
+          <div className="bg-indigo-50 p-3 rounded-lg mb-4 text-sm text-indigo-700">
+            {language === 'he' 
+              ? 'יש להגדיר את לוח הזמנים שלך כדי לקבל אתגרים יומיים מותאמים אישית'
+              : 'Set up your schedule to receive personalized daily challenges'}
+          </div>
+        )}
+        
+        {/* Show message when all challenges are completed for today */}
+        {challenges.length > 0 && challenges.every(c => c.isCompleted) && (
+          <div className="bg-green-50 p-4 rounded-lg mb-4 text-center">
+            <CheckCircle size={32} className="mx-auto mb-2 text-green-500" />
+            <p className="font-medium text-green-700">
+              {language === 'he' 
+                ? 'כל האתגרים היומיים הושלמו'
+                : 'All daily challenges completed'}
+            </p>
+            <p className="text-sm text-green-600 mt-1">
+              {language === 'he' 
+                ? 'בדוק מחר לאתגרים חדשים'
+                : 'Check back tomorrow for new challenges'}
+            </p>
+            <div className="flex items-center justify-center text-xs font-medium text-indigo-600 mt-2 bg-indigo-50 py-1 px-3 rounded-full max-w-fit mx-auto">
+              <Zap size={12} className={`${isRtl ? 'ml-1' : 'mr-1'}`} />
+              {language === 'he' 
+                ? 'השגת XP היום' 
+                : 'XP earned today'}: {challenges.reduce((total, c) => total + c.xpReward, 0)}
+            </div>
+          </div>
+        )}
+        
         {challenges.map((challenge) => (
           <div 
             key={challenge.id}
-            className={`p-3 rounded-lg border ${challenge.isCompleted ? 'bg-green-50 border-green-200' : 'hover:bg-gray-50 border-gray-200'} transition-colors`}
-            onClick={() => handleCompleteChallenge(challenge)}
+            className={`p-3 rounded-lg border ${
+              challenge.isCompleted 
+                ? 'bg-green-50 border-green-200 cursor-default' 
+                : challenge.id === 'setup-schedule' 
+                  ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 hover:shadow-md cursor-pointer' 
+                  : 'hover:bg-gray-50 border-gray-200 cursor-pointer'
+            } transition-all`}
+            onClick={() => !challenge.isCompleted && handleCompleteChallenge(challenge)}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -139,7 +179,11 @@ const DailyChallenge: React.FC<DailyChallengeProps> = ({
             
             {!challenge.isCompleted && onComplete && (
               <button 
-                className="w-full mt-2 py-1 text-xs font-medium text-center text-gray-600 bg-gray-100 hover:bg-gray-200 rounded"
+                className={`w-full mt-2 py-1 text-xs font-medium text-center rounded ${
+                  challenge.id === 'setup-schedule' 
+                    ? 'text-white bg-indigo-600 hover:bg-indigo-700' 
+                    : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleCompleteChallenge(challenge);
