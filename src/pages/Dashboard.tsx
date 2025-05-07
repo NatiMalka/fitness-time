@@ -13,7 +13,6 @@ import {
   Scale,
   UserCircle,
   Plus,
-  Smile,
   Award,
   Zap
 } from 'lucide-react';
@@ -32,6 +31,7 @@ import { Line } from 'react-chartjs-2';
 import LevelProgressCard from '../components/dashboard/LevelProgressCard';
 import DailyChallenge, { Challenge } from '../components/DailyChallenge';
 import CompletionConfetti from '../components/CompletionConfetti';
+import ActiveGoalCard from '../components/dashboard/ActiveGoalCard';
 
 // Register Chart.js components
 ChartJS.register(
@@ -97,14 +97,6 @@ const Dashboard: React.FC = () => {
     return language === 'he' ? 'השמנה' : 'Obese';
   };
 
-  // Calculate total calories consumed today
-  const totalCaloriesToday = useMemo(() => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    return mealEntries
-      .filter(meal => meal.date === today)
-      .reduce((total, meal) => total + meal.calories, 0);
-  }, [mealEntries]);
-
   // Get latest weight entry
   const latestWeight = useMemo(() => {
     // Get the latest weight from entries or directly from user profile if no entries
@@ -122,11 +114,6 @@ const Dashboard: React.FC = () => {
   const latestMood = useMemo(() => {
     return emotionalEntries.length > 0 ? emotionalEntries[0].mood : 'neutral';
   }, [emotionalEntries]);
-
-  // Get active goals
-  const activeGoals = useMemo(() => {
-    return goals.filter(goal => !goal.completed);
-  }, [goals]);
 
   // Get chart data for weight history
   const chartData = useMemo(() => {
@@ -164,24 +151,6 @@ const Dashboard: React.FC = () => {
       return format(dateObj, 'd MMMM', { locale: he });
     }
     return format(dateObj, 'MMMM d');
-  };
-
-  // Dashboard card translations
-  const cardTitles = {
-    currentWeight: language === 'he' ? 'משקל נוכחי' : 'Current Weight',
-    bmi: language === 'he' ? 'מדד מסת גוף' : 'BMI',
-    activeGoals: language === 'he' ? 'יעדים פעילים' : 'Active Goals',
-    weightHistory: language === 'he' ? 'היסטוריית משקל' : 'Weight History',
-    recentMeals: language === 'he' ? 'ארוחות אחרונות' : 'Recent Meals',
-    recentExercises: language === 'he' ? 'אימונים אחרונים' : 'Recent Exercises',
-    calories: language === 'he' ? 'קלוריות' : 'calories',
-    minutes: language === 'he' ? 'דקות' : 'minutes',
-    totalCaloriesToday: language === 'he' ? 'סך קלוריות היום:' : 'Total calories today:',
-    noMealsRecorded: language === 'he' ? 'אין ארוחות רשומות' : 'No meals recorded',
-    noExercisesRecorded: language === 'he' ? 'אין אימונים רשומים' : 'No exercises recorded',
-    viewAll: language === 'he' ? 'צפה בהכל' : 'View all',
-    addMeal: language === 'he' ? 'הוסף ארוחה' : 'Add Meal',
-    addExercise: language === 'he' ? 'הוסף אימון' : 'Add Exercise'
   };
 
   // Sample daily challenges
@@ -481,13 +450,10 @@ const Dashboard: React.FC = () => {
           />
         )}
         
-        {/* Active Goals Card */}
-        <DashboardCard 
-          title={t('activeGoals')}
-          value={activeGoals.length.toString()}
-          icon={<Target className="h-5 w-5 text-amber-600" />}
-          linkTo="/goals"
-          className="bg-gradient-to-br from-amber-50 to-yellow-50 hover:shadow-md transition-shadow"
+        {/* Active Goals Card - Replaced with ActiveGoalCard */}
+        <ActiveGoalCard 
+          goals={goals}
+          className="bg-gradient-to-br from-amber-50 to-yellow-50"
         />
       </div>
 

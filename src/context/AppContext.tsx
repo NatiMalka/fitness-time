@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { parseISO, format } from 'date-fns';
+import { format } from 'date-fns';
 import { useTranslation } from '../translations';
 
 // Types
@@ -112,10 +112,11 @@ export interface UserProfile {
   name: string;
   weight: number;
   height: number;
-  birthDate: string;
-  gender: 'male' | 'female' | 'other';
+  birthDate?: string;
+  gender?: 'male' | 'female' | 'other';
   activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'veryActive';
-  weightGoal: 'lose' | 'maintain' | 'gain';
+  weightGoal?: 'lose' | 'maintain' | 'gain';
+  targetWeight?: number;
   trainingSchedule?: UserSchedule;
   xp?: UserXp;
   telegramChatId?: string;
@@ -152,7 +153,7 @@ interface AppContextType {
   updateGoal: (id: string, updates: Partial<Goal>) => void;
   addAchievement: (achievement: Omit<Achievement, 'id'>) => void;
   updateAchievement: (id: string, updates: Partial<Achievement>) => void;
-  awardXp: (amount: number, reason: string) => void;
+  awardXp: (amount: number) => void;
   checkAchievements: () => void;
   updateExerciseEntry: (id: string, updates: Partial<Omit<ExerciseEntry, 'id'>>) => void;
   deleteExerciseEntry: (id: string) => void;
@@ -164,15 +165,7 @@ interface AppContextType {
 const generateMockData = () => {
   const today = new Date();
   
-  const weightEntries: WeightEntry[] = Array.from({ length: 10 }).map((_, i) => {
-    const date = new Date();
-    date.setDate(today.getDate() - i);
-    return {
-      id: `weight-${i}`,
-      date: format(date, 'yyyy-MM-dd'),
-      weight: 65 - (Math.random() * 2)
-    };
-  });
+  const weightEntries: WeightEntry[] = [];
   
   return {
     userProfile: null,
@@ -239,16 +232,7 @@ const generateMockData = () => {
         completed: false
       }
     ],
-    achievements: [
-      {
-        id: 'achievement-1',
-        title: 'First Week Complete',
-        description: 'Logged data for 7 consecutive days',
-        icon: 'award',
-        dateEarned: format(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 3), 'yyyy-MM-dd'),
-        type: 'medal' as const
-      }
-    ]
+    achievements: []
   };
 };
 
@@ -280,6 +264,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [language]);
   
   const updateUserProfile = (profile: UserProfile) => {
+    // Get language from localStorage or default to 'en'
+    const lang = localStorage.getItem('bodyBalanceLanguage') || 'en';
+    
     // When a user profile is created or updated, reset the demo data
     // and add the current weight as the first weight entry
     const today = new Date();
@@ -327,18 +314,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         exerciseEntries: updatedExerciseEntries,
         // Reset goals to be more personalized if this is first time setting up profile
         goals: prev.userProfile ? prev.goals : [
-          {
-            id: `goal-${Date.now()}`,
-            title: profile.weightGoal === 'lose' ? 'Lose 5kg' : 
-                  profile.weightGoal === 'gain' ? 'Gain 3kg' : 'Maintain current weight',
-            targetValue: profile.weightGoal === 'lose' ? profile.weight - 5 : 
-                        profile.weightGoal === 'gain' ? profile.weight + 3 : profile.weight,
-            currentValue: profile.weight,
-            type: 'weight',
-            deadline: format(new Date(today.getFullYear(), today.getMonth() + 3, 1), 'yyyy-MM-dd'),
-            completed: false
-          }
-        ]
+          profile.weightGoal
+            ? {
+                id: `goal-${Date.now()}`,
+                title:
+                  lang === 'he'
+                    ? profile.weightGoal === 'lose'
+                      ? profile.targetWeight 
+                        ? `הפחתת משקל ל-${profile.targetWeight} ק"ג` 
+                        : 'הפחתת 5 ק"ג'
+                      : profile.weightGoal === 'gain'
+                        ? profile.targetWeight 
+                          ? `העלאת משקל ל-${profile.targetWeight} ק"ג` 
+                          : 'העלאת 3 ק"ג'
+                        : 'שמירה על משקל'
+                    : profile.weightGoal === 'lose'
+                      ? profile.targetWeight 
+                        ? `Reach target weight of ${profile.targetWeight}kg` 
+                        : 'Lose 5kg'
+                      : profile.weightGoal === 'gain'
+                        ? profile.targetWeight 
+                          ? `Reach target weight of ${profile.targetWeight}kg` 
+                          : 'Gain 3kg'
+                        : 'Maintain current weight',
+                targetValue:
+                  // Use targetWeight if provided, otherwise use default values
+                  profile.targetWeight || (
+                    profile.weightGoal === 'lose'
+                      ? profile.weight - 5
+                      : profile.weightGoal === 'gain'
+                        ? profile.weight + 3
+                        : profile.weight
+                  ),
+                currentValue: profile.weight,
+                type: 'weight',
+                deadline: format(new Date(today.getFullYear(), today.getMonth() + 3, 1), 'yyyy-MM-dd'),
+                completed: false
+              }
+            : undefined
+        ].filter(Boolean)
       };
     });
   };
@@ -482,7 +496,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
-  const awardXp = (amount: number, reason: string) => {
+  const awardXp = (amount: number) => {
     if (!data.userProfile) return;
 
     const xpLevels: XpLevel[] = [
@@ -692,7 +706,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         achievements: [...prev.achievements, newAchievement]
       }));
       
-      awardXp(achievement.xpReward, `Achievement: ${achievement.title}`);
+      awardXp(achievement.xpReward);
       
       console.log(`Achievement notification: ${achievement.title}`);
     });

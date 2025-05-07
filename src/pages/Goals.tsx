@@ -112,12 +112,6 @@ const Goals: React.FC = () => {
     return format(parseISO(dateStr), 'MMMM d, yyyy');
   };
 
-  // Get goal type label based on the current language
-  const getGoalTypeLabel = (goalType: string) => {
-    const type = goalTypes.find(t => t.value === goalType);
-    return language === 'he' ? type?.heLabel : type?.label;
-  };
-
   return (
     <div className="space-y-6 pb-6" dir={language === 'he' ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between">
@@ -182,7 +176,7 @@ const Goals: React.FC = () => {
               </label>
               <select
                 value={type}
-                onChange={e => setType(e.target.value as any)}
+                onChange={e => setType(e.target.value as 'weight' | 'exercise' | 'nutrition' | 'other')}
                 className="input"
               >
                 {goalTypes.map(option => (
@@ -255,7 +249,31 @@ const Goals: React.FC = () => {
         {activeGoals.length > 0 ? (
           <div className="space-y-4">
             {activeGoals.map(goal => {
-              const progress = Math.min(100, Math.max(0, (goal.currentValue / goal.targetValue) * 100));
+              // Calculate progress based on goal type and targets
+              let progress = 0;
+              
+              if (goal.type === 'weight') {
+                if (goal.targetValue > goal.currentValue) {
+                  // Weight gain goal
+                  const startingValue = goal.currentValue - (goal.targetValue - goal.currentValue); // Estimate
+                  const totalToGain = goal.targetValue - startingValue;
+                  const gained = goal.currentValue - startingValue;
+                  progress = Math.min(100, Math.max(0, (gained / totalToGain) * 100));
+                } else if (goal.targetValue < goal.currentValue) {
+                  // Weight loss goal
+                  const startingValue = goal.currentValue + (goal.currentValue - goal.targetValue); // Estimate
+                  const totalToLose = startingValue - goal.targetValue;
+                  const lost = startingValue - goal.currentValue;
+                  progress = Math.min(100, Math.max(0, (lost / totalToLose) * 100));
+                } else {
+                  // Maintain weight
+                  progress = 100;
+                }
+              } else {
+                // For non-weight goals, use standard calculation
+                progress = Math.min(100, Math.max(0, (goal.currentValue / goal.targetValue) * 100));
+              }
+              
               const isOverdue = goal.deadline && isPast(parseISO(goal.deadline));
               const typeInfo = goalTypes.find(t => t.value === goal.type);
               
@@ -265,26 +283,62 @@ const Goals: React.FC = () => {
                   className={`card p-4 ${isOverdue ? 'border-amber-300' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">{goal.title}</h3>
-                    <span className="badge-secondary">
+                    <div className="flex items-center">
+                      <div className={`p-2 rounded-full ${
+                        goal.type === 'weight' ? 'bg-amber-50 text-amber-600' :
+                        goal.type === 'exercise' ? 'bg-green-50 text-green-600' :
+                        goal.type === 'nutrition' ? 'bg-blue-50 text-blue-600' :
+                        'bg-indigo-50 text-indigo-600'
+                      } mr-2`}>
+                        <Target className="h-5 w-5" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900">{goal.title}</h3>
+                    </div>
+                    <span className={`badge ${
+                      goal.type === 'weight' ? 'badge-warning' :
+                      goal.type === 'exercise' ? 'badge-success' :
+                      goal.type === 'nutrition' ? 'badge-primary' :
+                      'badge-secondary'
+                    }`}>
                       {language === 'he' ? typeInfo?.heLabel : typeInfo?.label}
                     </span>
                   </div>
                   
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm text-gray-500">
-                        {language === 'he' 
-                          ? `${goal.currentValue} מתוך ${goal.targetValue}`
-                          : `${goal.currentValue} of ${goal.targetValue}`}
+                  {/* Current and Target Value Display */}
+                  <div className="grid grid-cols-2 gap-2 mt-3 mb-2">
+                    <div className="bg-gray-50 p-2 rounded-lg">
+                      <p className="text-xs text-gray-500">{language === 'he' ? 'ערך נוכחי' : 'Current'}</p>
+                      <p className="text-lg font-bold">
+                        {goal.currentValue} 
+                        {goal.type === 'weight' && (language === 'he' ? ' ק"ג' : ' kg')}
                       </p>
-                      <span className="text-sm font-medium">
-                        {Math.round(progress)}%
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded-lg">
+                      <p className="text-xs text-gray-500">{language === 'he' ? 'ערך יעד' : 'Target'}</p>
+                      <p className="text-lg font-bold">
+                        {goal.targetValue} 
+                        {goal.type === 'weight' && (language === 'he' ? ' ק"ג' : ' kg')}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Display */}
+                  <div className="mt-2">
+                    <div className="flex justify-between items-center text-xs text-gray-600 mb-1">
+                      <span>
+                        {goal.type === 'weight' && (
+                          language === 'he'
+                            ? (goal.targetValue > goal.currentValue ? 'העלאת משקל' : 
+                               goal.targetValue < goal.currentValue ? 'הפחתת משקל' : 'שמירה על משקל')
+                            : (goal.targetValue > goal.currentValue ? 'Weight Gain' : 
+                               goal.targetValue < goal.currentValue ? 'Weight Loss' : 'Weight Maintenance')
+                        )}
                       </span>
+                      <span className="font-medium">{Math.round(progress)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-indigo-600 h-2 rounded-full"
+                        className="bg-amber-500 h-2 rounded-full transition-all duration-500 shadow-sm"
                         style={{ width: `${progress}%` }}
                       ></div>
                     </div>
@@ -368,22 +422,49 @@ const Goals: React.FC = () => {
           <h2 className="text-lg font-semibold mb-4">
             {language === 'he' ? 'יעדים שהושלמו' : 'Completed Goals'}
           </h2>
-          <div className="card overflow-hidden">
-            <ul className="divide-y divide-gray-200">
-              {completedGoals.map(goal => (
-                <li key={goal.id} className="p-4 flex items-center">
-                  <div className="h-8 w-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center mr-3">
-                    <Trophy size={18} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {completedGoals.map(goal => {
+              const typeInfo = goalTypes.find(t => t.value === goal.type);
+              
+              return (
+                <div key={goal.id} className="card p-4 bg-gradient-to-br from-green-50 to-emerald-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <div className="p-2 rounded-full bg-green-100 text-green-600 mr-2">
+                        <Trophy className="h-5 w-5" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900">{goal.title}</h3>
+                    </div>
+                    <Check className="h-5 w-5 text-green-600" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{goal.title}</p>
-                    <p className="text-sm text-gray-500">
-                      {goal.targetValue} {goal.type === 'weight' && (language === 'he' ? 'ק"ג' : 'kg')}
-                    </p>
+                  
+                  <div className="bg-white/70 backdrop-blur-sm p-3 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-xs text-gray-500">{language === 'he' ? 'סוג יעד' : 'Goal Type'}</p>
+                        <p className="font-medium text-sm">
+                          {language === 'he' ? typeInfo?.heLabel : typeInfo?.label}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">{language === 'he' ? 'ערך יעד' : 'Target'}</p>
+                        <p className="font-medium text-sm">
+                          {goal.targetValue}
+                          {goal.type === 'weight' && (language === 'he' ? ' ק"ג' : ' kg')}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </li>
-              ))}
-            </ul>
+                  
+                  <div className="w-full bg-green-200 rounded-full h-2 mt-3">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full" 
+                      style={{ width: '100%' }}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

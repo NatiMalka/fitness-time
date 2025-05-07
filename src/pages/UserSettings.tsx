@@ -5,16 +5,17 @@ import { he } from 'date-fns/locale';
 import { UserCircle, User, ChevronRight, Save } from 'lucide-react';
 
 const UserSettings: React.FC = () => {
-  const { userProfile, updateUserProfile, language, t } = useAppContext();
+  const { userProfile, updateUserProfile, language } = useAppContext();
   
   // Form state
   const [name, setName] = useState(userProfile?.name || '');
   const [weight, setWeight] = useState(userProfile?.weight?.toString() || '');
   const [height, setHeight] = useState(userProfile?.height?.toString() || '');
-  const [birthDate, setBirthDate] = useState(userProfile?.birthDate || '');
+  const [birthDate, setBirthDate] = useState<string>(userProfile?.birthDate?.toString() || '');
   const [gender, setGender] = useState<'male' | 'female' | 'other' | undefined>(userProfile?.gender);
-  const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | undefined>(userProfile?.activityLevel);
+  const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'moderate' | 'active' | 'veryActive'>(userProfile?.activityLevel || 'sedentary');
   const [weightGoal, setWeightGoal] = useState<'lose' | 'maintain' | 'gain' | undefined>(userProfile?.weightGoal);
+  const [targetWeight, setTargetWeight] = useState(userProfile?.targetWeight?.toString() || '');
 
   // Initial form setup
   useEffect(() => {
@@ -26,6 +27,7 @@ const UserSettings: React.FC = () => {
       setGender(userProfile.gender);
       setActivityLevel(userProfile.activityLevel);
       setWeightGoal(userProfile.weightGoal);
+      setTargetWeight(userProfile.targetWeight?.toString() || '');
     }
   }, [userProfile]);
 
@@ -35,6 +37,7 @@ const UserSettings: React.FC = () => {
     
     const weightValue = parseFloat(weight);
     const heightValue = parseFloat(height);
+    const targetWeightValue = parseFloat(targetWeight);
     
     if (name.trim() && !isNaN(weightValue) && !isNaN(heightValue)) {
       const profile: UserProfile = {
@@ -44,7 +47,10 @@ const UserSettings: React.FC = () => {
         birthDate: birthDate || undefined,
         gender,
         activityLevel,
-        weightGoal
+        weightGoal,
+        targetWeight: !isNaN(targetWeightValue) ? targetWeightValue : undefined,
+        trainingSchedule: userProfile?.trainingSchedule,
+        xp: userProfile?.xp
       };
       
       updateUserProfile(profile);
@@ -197,7 +203,10 @@ const UserSettings: React.FC = () => {
                 <select
                   id="gender"
                   value={gender || ''}
-                  onChange={e => setGender(e.target.value as any || undefined)}
+                  onChange={e => {
+                    const value = e.target.value;
+                    setGender(value ? (value as 'male' | 'female' | 'other') : undefined);
+                  }}
                   className="input"
                 >
                   <option value="">{language === 'he' ? 'בחר מגדר' : 'Select gender'}</option>
@@ -224,8 +233,8 @@ const UserSettings: React.FC = () => {
                 </label>
                 <select
                   id="activity-level"
-                  value={activityLevel || ''}
-                  onChange={e => setActivityLevel(e.target.value as any || undefined)}
+                  value={activityLevel}
+                  onChange={e => setActivityLevel(e.target.value as 'sedentary' | 'light' | 'moderate' | 'active' | 'veryActive')}
                   className="input"
                 >
                   <option value="">{language === 'he' ? 'בחר רמת פעילות' : 'Select activity level'}</option>
@@ -236,14 +245,17 @@ const UserSettings: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div>
-                <label htmlFor="weight-goal" className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   {language === 'he' ? 'יעד משקל' : 'Weight Goal'}
                 </label>
                 <select
                   id="weight-goal"
                   value={weightGoal || ''}
-                  onChange={e => setWeightGoal(e.target.value as any || undefined)}
+                  onChange={e => {
+                    const value = e.target.value;
+                    setWeightGoal(value ? value as 'lose' | 'maintain' | 'gain' : undefined);
+                  }}
                   className="input"
                 >
                   <option value="">{language === 'he' ? 'בחר יעד משקל' : 'Select weight goal'}</option>
@@ -256,6 +268,35 @@ const UserSettings: React.FC = () => {
               </div>
             </div>
           </div>
+          
+          {/* Target Weight - Only show if lose or gain weight is selected */}
+          {(weightGoal === 'lose' || weightGoal === 'gain') && (
+            <div className="space-y-2">
+              <label htmlFor="target-weight" className="block text-sm font-medium text-gray-700">
+                {language === 'he' ? 'משקל יעד (ק"ג)' : 'Target Weight (kg)'}
+              </label>
+              <input
+                type="number"
+                id="target-weight"
+                value={targetWeight}
+                onChange={e => setTargetWeight(e.target.value)}
+                className="input"
+                min="1"
+                step="0.1"
+              />
+              {weight && targetWeight && (
+                <p className="mt-1 text-sm text-gray-500">
+                  {language === 'he'
+                    ? `${weightGoal === 'lose' 
+                        ? `יעד: להפחית ${(parseFloat(weight) - parseFloat(targetWeight)).toFixed(1)} ק"ג` 
+                        : `יעד: לעלות ${(parseFloat(targetWeight) - parseFloat(weight)).toFixed(1)} ק"ג`}`
+                    : `${weightGoal === 'lose' 
+                        ? `Goal: Lose ${(parseFloat(weight) - parseFloat(targetWeight)).toFixed(1)} kg` 
+                        : `Goal: Gain ${(parseFloat(targetWeight) - parseFloat(weight)).toFixed(1)} kg`}`}
+                </p>
+              )}
+            </div>
+          )}
           
           {/* Submit Button */}
           <div className={`flex ${language === 'he' ? 'justify-start' : 'justify-end'}`}>

@@ -22,8 +22,10 @@ const Welcome: React.FC = () => {
   const [name, setName] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
-  const [gender, setGender] = useState<'male' | 'female' | 'other' | undefined>(undefined);
-  const [weightGoal, setWeightGoal] = useState<'lose' | 'maintain' | 'gain' | undefined>(undefined);
+  const [gender, setGender] = useState<"male" | "female" | "other" | undefined>(undefined);
+  const [weightGoal, setWeightGoal] = useState<"lose" | "maintain" | "gain" | undefined>(undefined);
+  const [targetWeight, setTargetWeight] = useState('');
+  const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'moderate' | 'active' | 'veryActive'>('sedentary');
   
   // Go to next step
   const handleNext = () => {
@@ -43,14 +45,19 @@ const Welcome: React.FC = () => {
   const handleFinish = () => {
     const weightValue = parseFloat(weight);
     const heightValue = parseFloat(height);
+    const targetWeightValue = parseFloat(targetWeight);
     
-    if (name.trim() && !isNaN(weightValue) && !isNaN(heightValue)) {
+    if (name.trim() && !isNaN(weightValue) && !isNaN(heightValue) && 
+        (weightGoal === 'maintain' || !isNaN(targetWeightValue))) {
       const profile: UserProfile = {
         name: name.trim(),
         weight: weightValue,
         height: heightValue,
+        birthDate: '',
+        activityLevel,
         gender,
-        weightGoal
+        weightGoal,
+        targetWeight: targetWeightValue || weightValue // Use current weight for maintain goal
       };
       
       updateUserProfile(profile);
@@ -72,10 +79,10 @@ const Welcome: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 py-12 px-4 sm:px-6 lg:px-8" dir={language === 'he' ? 'rtl' : 'ltr'}>
-      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+    <div className="h-screen w-full bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-500 animate-gradient-x bg-size-200 overflow-hidden flex items-center justify-center px-4 sm:px-6" dir={language === 'he' ? 'rtl' : 'ltr'}>
+      <div className="w-full max-w-lg bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-500 animate-float">
         {/* Header */}
-        <div className="bg-indigo-600 p-6 text-white">
+        <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-8 text-white">
           <h1 className="text-2xl font-bold">
             {language === 'he' ? 'ברוכים הבאים לבריאות מאוזנת' : 'Welcome to Body Balance'}
           </h1>
@@ -110,7 +117,7 @@ const Welcome: React.FC = () => {
         </div>
         
         {/* Content */}
-        <div className="p-6">
+        <div className="p-8">
           {/* Step 1: Name */}
           {step === 1 && (
             <div className="space-y-6">
@@ -181,7 +188,7 @@ const Welcome: React.FC = () => {
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => setGender(option.value as any)}
+                        onClick={() => setGender(option.value as 'male' | 'female' | 'other' | undefined)}
                         className={`p-2 rounded-lg border ${
                           gender === option.value
                             ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
@@ -192,6 +199,23 @@ const Welcome: React.FC = () => {
                       </button>
                     ))}
                   </div>
+                </div>
+                <div>
+                  <label htmlFor="activity-level" className="block text-sm font-medium text-gray-700 mb-1">
+                    {language === 'he' ? 'רמת פעילות' : 'Activity Level'}
+                  </label>
+                  <select
+                    id="activity-level"
+                    value={activityLevel}
+                    onChange={e => setActivityLevel(e.target.value as 'sedentary' | 'light' | 'moderate' | 'active' | 'veryActive')}
+                    className="input"
+                  >
+                    <option value="sedentary">{language === 'he' ? 'יושבני' : 'Sedentary'}</option>
+                    <option value="light">{language === 'he' ? 'פעילות קלה' : 'Lightly Active'}</option>
+                    <option value="moderate">{language === 'he' ? 'פעילות בינונית' : 'Moderately Active'}</option>
+                    <option value="active">{language === 'he' ? 'פעיל' : 'Active'}</option>
+                    <option value="veryActive">{language === 'he' ? 'פעיל מאוד' : 'Very Active'}</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -212,7 +236,7 @@ const Welcome: React.FC = () => {
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setWeightGoal(option.value as any)}
+                      onClick={() => setWeightGoal(option.value as 'lose' | 'maintain' | 'gain' | undefined)}
                       className={`p-3 rounded-lg border flex items-center ${
                         weightGoal === option.value
                           ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
@@ -225,45 +249,121 @@ const Welcome: React.FC = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Target Weight Field - Show only if lose or gain weight is selected */}
+              {(weightGoal === 'lose' || weightGoal === 'gain') && (
+                <div className="mt-4">
+                  <label htmlFor="target-weight" className="block text-sm font-medium text-gray-700 mb-1">
+                    {language === 'he' 
+                      ? `משקל יעד (ק"ג) - ${weightGoal === 'lose' ? 'להפחתה' : 'לעלייה'}`
+                      : `Target Weight (kg) - ${weightGoal === 'lose' ? 'to lose' : 'to gain'}`}
+                  </label>
+                  <input
+                    type="number"
+                    id="target-weight"
+                    value={targetWeight}
+                    onChange={e => setTargetWeight(e.target.value)}
+                    placeholder={language === 'he' ? 'הכנס משקל יעד' : 'Enter target weight'}
+                    className="input w-full"
+                    min="1"
+                    step="0.1"
+                    required
+                  />
+                  {weight && targetWeight && (
+                    <p className="mt-2 text-sm">
+                      {language === 'he'
+                        ? `${weightGoal === 'lose' 
+                            ? `יעד: להפחית ${(parseFloat(weight) - parseFloat(targetWeight)).toFixed(1)} ק"ג` 
+                            : `יעד: לעלות ${(parseFloat(targetWeight) - parseFloat(weight)).toFixed(1)} ק"ג`}`
+                        : `${weightGoal === 'lose' 
+                            ? `Goal: Lose ${(parseFloat(weight) - parseFloat(targetWeight)).toFixed(1)} kg` 
+                            : `Goal: Gain ${(parseFloat(targetWeight) - parseFloat(weight)).toFixed(1)} kg`}`}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
           
           {/* Navigation Buttons */}
-          <div className={`mt-8 flex ${language === 'he' ? 'flex-row-reverse' : 'flex-row'} justify-between`}>
-            {step > 1 ? (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="btn-outline"
-              >
-                {language === 'he' ? 'הקודם' : 'Back'}
-              </button>
+          <div className={`mt-10 flex justify-between items-center ${language === 'he' ? 'flex-row-reverse' : ''}`}>
+            {/* For Hebrew, show Next/Finish button first (left), then Back (right) */}
+            {language === 'he' ? (
+              <>
+                {step < totalSteps ? (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="btn-primary shadow-lg rounded-full px-10 py-3 text-lg font-bold transition-transform transform hover:scale-105 hover:shadow-xl focus:ring-4 focus:ring-indigo-300"
+                    disabled={
+                      (step === 1 && !name.trim()) || 
+                      (step === 2 && (!weight || !height))
+                    }
+                    style={{ minWidth: '120px' }}
+                  >
+                    {'הבא'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleFinish}
+                    className="btn-primary shadow-lg rounded-full px-10 py-3 text-lg font-bold transition-transform transform hover:scale-105 hover:shadow-xl focus:ring-4 focus:ring-indigo-300"
+                    style={{ minWidth: '120px' }}
+                  >
+                    {'סיים והתחל'}
+                  </button>
+                )}
+                {step > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="btn-outline"
+                  >
+                    {'הקודם'}
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+              </>
             ) : (
-              <div></div> // Empty div for spacing
-            )}
-            
-            {step < totalSteps ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="btn-primary"
-                disabled={
-                  (step === 1 && !name.trim()) || 
-                  (step === 2 && (!weight || !height))
-                }
-              >
-                {language === 'he' ? 'הבא' : 'Next'}
-                <ChevronRight size={18} className={language === 'he' ? 'mr-1' : 'ml-1'} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleFinish}
-                className="btn-primary"
-              >
-                {language === 'he' ? 'סיים והתחל' : 'Finish & Start'}
-                <ArrowRight size={18} className={language === 'he' ? 'mr-1' : 'ml-1'} />
-              </button>
+              <>
+                {step > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="btn-outline"
+                  >
+                    {'Back'}
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+                {step < totalSteps ? (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="btn-primary shadow-lg rounded-full px-10 py-3 text-lg font-bold transition-transform transform hover:scale-105 hover:shadow-xl focus:ring-4 focus:ring-indigo-300"
+                    disabled={
+                      (step === 1 && !name.trim()) || 
+                      (step === 2 && (!weight || !height))
+                    }
+                    style={{ minWidth: '120px' }}
+                  >
+                    {'Next'}
+                    <ChevronRight size={20} className="ml-2" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleFinish}
+                    className="btn-primary shadow-lg rounded-full px-10 py-3 text-lg font-bold transition-transform transform hover:scale-105 hover:shadow-xl focus:ring-4 focus:ring-indigo-300"
+                    style={{ minWidth: '120px' }}
+                  >
+                    {'Finish & Start'}
+                    <ArrowRight size={20} className="ml-2" />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

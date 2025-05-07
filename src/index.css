@@ -50,7 +50,7 @@
 
 @layer components {
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-md;
+    @apply bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100/20 overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.01] hover:border-transparent;
   }
 
   .btn {
@@ -58,23 +58,23 @@
   }
 
   .btn-primary {
-    @apply btn bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500;
+    @apply btn bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 shadow-md hover:shadow-indigo-500/30;
   }
 
   .btn-secondary {
-    @apply btn bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500;
+    @apply btn bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500 shadow-md hover:shadow-emerald-500/30;
   }
 
   .btn-accent {
-    @apply btn bg-orange-500 text-white hover:bg-orange-600 focus:ring-orange-400;
+    @apply btn bg-orange-500 text-white hover:bg-orange-600 focus:ring-orange-400 shadow-md hover:shadow-orange-500/30;
   }
 
   .btn-outline {
-    @apply btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-400;
+    @apply btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-400 hover:shadow-md;
   }
 
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200;
   }
   
   .badge {
@@ -132,4 +132,14 @@
 @keyframes slideIn {
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 8s ease-in-out infinite;
 }
